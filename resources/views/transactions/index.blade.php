@@ -1,5 +1,11 @@
 <x-app-layout>
-
+@php
+    // Lấy toàn bộ danh mục đã được đặt làm cố định của user này
+    $recurringCategoryIds = \App\Models\RecurringTransaction::where('user_id', auth()->id())
+        ->where('is_active', 1)
+        ->pluck('category_id')
+        ->toArray();
+@endphp
 <div class="container py-4">
 
     {{-- 🔥 TIÊU ĐỀ --}}
@@ -201,10 +207,23 @@
                     {{ $icon }}
                 </div>
                 
-                <div class="tran-info text-start">
-                    <h6 class="mb-0 fw-bold text-dark">{{ $tran->category->name ?? 'Chưa phân loại' }}</h6>
-                    <small class="text-muted">{{ $tran->description ?: 'Không có mô tả' }}</small>
-                </div>
+               <div class="tran-info text-start">
+    {{-- Khối bọc giúp tên danh mục và ghim nằm thẳng hàng ngang --}}
+    <div class="d-flex align-items-center gap-1">
+        <h6 class="mb-0 fw-bold text-dark" style="font-family: 'Itim', cursive;">
+            {{ $tran->category->name ?? 'Chưa phân loại' }}
+        </h6>
+        
+        {{-- Hiện icon ghim nếu danh mục này có trong danh sách giao dịch cố định --}}
+        @if(isset($recurringCategoryIds) && in_array($tran->category_id, $recurringCategoryIds))
+            <span class="badge-pin-fix animate-gentle-bounce" title="Giao dịch cố định hằng tháng" 
+                  style="font-size: 0.9rem; cursor: help; filter: drop-shadow(0px 2px 4px rgba(236, 72, 153, 0.3));">
+                📌
+            </span>
+        @endif
+    </div>
+    <small class="text-muted d-block mt-0.5" style="font-size: 0.85rem;">{{ $tran->description ?: 'Không có mô tả' }}</small>
+</div>
             </div>
 
             <div class="d-flex align-items-center gap-4">
@@ -226,64 +245,81 @@
 
     {{-- 🔥 QUAN TRỌNG: MODAL SỬA CHO TỪNG GIAO DỊCH (Dán ngay trong loop) --}}
     <div class="modal fade" id="editModal{{ $tran->id }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" style="border-radius: 25px; border: none;">
-                <div class="modal-header border-0 pt-4 px-4">
-                    <h5 class="fw-bold title-gradient" style="font-family: 'Itim', cursive;">Sửa giao dịch ✏️</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form method="POST" action="{{ route('transactions.update', $tran->id) }}">
-                    @csrf
-                    @method('PUT')
-                    <div class="modal-body p-4 text-start">
-                        <div class="mb-3">
-                            <label class="small fw-bold text-muted">Số tiền</label>
-                            <input type="text" name="amount" value="{{ number_format($tran->amount, 0, ',', '.') }}" 
-                                   oninput="formatMoney(this)" class="form-control input-pink-style fw-bold text-primary">
-                        </div>
-                        <div class="mb-3">
-                            <label class="small fw-bold text-muted">Danh mục</label>
-                            <select name="category_id" class="form-select input-pink-style">
-                                @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}" {{ $tran->category_id == $cat->id ? 'selected' : '' }}>
-                                        {{ $cat->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        {{-- Modal Sửa - Đảm bảo name="type" nằm trong thẻ select --}}
-<div class="mb-3">
-    <label class="small fw-bold text-muted">Loại giao dịch</label>
-    <select name="type" class="form-select input-pink-style" required>
-        <option value="expense" {{ $tran->type == 'expense' ? 'selected' : '' }}>Expense</option>
-        <option value="income" {{ $tran->type == 'income' ? 'selected' : '' }}>Income</option>
-    </select>
-</div>
-                        <div class="mb-3">
-    <label class="small fw-bold text-muted">Ngày giao dịch</label>
-    <input type="date" name="transaction_date" value="{{ \Carbon\Carbon::parse($tran->transaction_date)->format('Y-m-d') }}" 
-           class="form-control input-pink-style">
-</div>
-
-                        <div class="mb-3">
-                            <label class="small fw-bold text-muted">Ghi chú</label>
-                            <input type="text" name="description" value="{{ $tran->description }}" class="form-control input-pink-style">
-                        </div>
-                    </div>
-                    {{-- CỤM NÚT: HỦY TRẮNG & CẬP NHẬT HỒNG TÍM --}}
-<div class="modal-footer border-0 pb-4 justify-content-center gap-3">
-    <button type="button" class="btn btn-white-soft" data-bs-dismiss="modal">
-        Hủy
-    </button>
-    
-    <button type="submit" class="btn btn-pink-purple-gradient">
-        Cập nhật
-    </button>
-</div>
-                </form>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 25px; border: none;">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold"
+    style="
+        font-family: 'Itim', cursive;
+        color:#ff69b4;
+    ">
+    Chỉnh sửa giao dịch 
+</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+            <form method="POST" action="{{ route('transactions.update', $tran->id) }}">
+                @csrf
+                @method('PUT')
+                <div class="modal-body p-4 text-start">
+                    <div class="mb-3">
+                        <label class="small fw-bold text-muted">Số tiền</label>
+                        <input type="text" name="amount" value="{{ number_format($tran->amount, 0, ',', '.') }}" 
+                               oninput="formatMoney(this)" class="form-control input-pink-style fw-bold text-primary">
+                    </div>
+                    <div class="mb-3">
+                        <label class="small fw-bold text-muted">Danh mục</label>
+                        <select name="category_id" class="form-select input-pink-style">
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}" {{ $tran->category_id == $cat->id ? 'selected' : '' }}>
+                                    {{ $cat->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="small fw-bold text-muted">Loại giao dịch</label>
+                        <select name="type" class="form-select input-pink-style" required>
+                            <option value="expense" {{ $tran->type == 'expense' ? 'selected' : '' }}>Expense</option>
+                            <option value="income" {{ $tran->type == 'income' ? 'selected' : '' }}>Income</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="small fw-bold text-muted">Ngày giao dịch</label>
+                        <input type="date" name="transaction_date" value="{{ \Carbon\Carbon::parse($tran->transaction_date)->format('Y-m-d') }}" 
+                               class="form-control input-pink-style">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="small fw-bold text-muted">Ghi chú</label>
+                        <input type="text" name="description" value="{{ $tran->description }}" class="form-control input-pink-style">
+                    </div>
+
+                    {{-- 🔥 Đã chèn nút gạt cố định hằng tháng ở đây nè ông --}}
+                    <div class="mb-3">
+                        @php
+                            $isCurrentlyRecurring = isset($recurringCategoryIds) && in_array($tran->category_id, $recurringCategoryIds);
+                        @endphp
+                        <label class="soft-switch d-flex align-items-center gap-2" style="font-family: 'Itim', cursive; flex-direction: row; justify-content: start; cursor: pointer;">
+                            <input type="checkbox" name="is_recurring" value="1" {{ $isCurrentlyRecurring ? 'checked' : '' }}>
+                            <span class="slider round" style="margin-bottom: 0;"></span>
+                            <span class="switch-label" style="font-size: 14px; margin-bottom: 0;">Đặt làm giao dịch cố định hằng tháng</span>
+                        </label>
+                    </div>
+                </div>
+                {{-- CỤM NÚT: HỦY TRẮNG & CẬP NHẬT HỒNG TÍM --}}
+                <div class="modal-footer border-0 pb-4 justify-content-center gap-3">
+                    <button type="button" class="btn btn-white-soft" data-bs-dismiss="modal">
+                        Hủy
+                    </button>
+                    
+                    <button type="submit" class="btn btn-pink-purple-gradient">
+                        Cập nhật
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 @endforeach
     </div>
 </div>
@@ -527,6 +563,59 @@
 .soft-switch input:checked ~ .switch-label {
     color: #db2777;
 }
+.animate-gentle-bounce {
+    animation: gentle-bounce 2s infinite ease-in-out;
+    display: inline-block;
+}
+
+@keyframes gentle-bounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-3px) scale(1.08); }
+}
+/* CSS Nút mũi tên đồng bộ màu hồng chuẩn Luxury Soft UI */
+.btn-back-to-top {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 48px;
+    height: 48px;
+    background: #ffffff !important; /* Nền trắng mịn */
+    border: 2px solid #f9a8d4 !important; /* Viền hồng pastel */
+    border-radius: 50%;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.15);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    opacity: 0;
+    visibility: hidden;
+    z-index: 999;
+}
+
+/* Định dạng màu hồng riêng cho icon mũi tên bên trong */
+.btn-back-to-top i {
+    color: #ec4899 !important;
+    transition: color 0.3s ease;
+}
+
+.btn-back-to-top:hover {
+    background: linear-gradient(135deg, #ec4899 0%, #d946ef 100%) !important; /* Hover lên đổi nền hồng tím */
+    border-color: transparent !important;
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 8px 20px rgba(236, 72, 153, 0.35);
+}
+
+/* Khi hover thì icon đổi sang màu trắng nổi bật */
+.btn-back-to-top:hover i {
+    color: #ffffff !important;
+}
+
+.btn-back-to-top.show {
+    opacity: 1;
+    visibility: visible;
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -593,7 +682,28 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => el.remove(), 1000); 
         }, 3000);
     });
+
+    // --- 🔥 LOGIC XỬ LÝ MŨI TÊN LÊN ĐẦU TRANG ---
+    const backToTopBtn = document.getElementById('backToTopBtn');
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 300) {
+            backToTopBtn.classList.add('show');
+        } else {
+            backToTopBtn.classList.remove('show');
+        }
+    });
+
+    backToTopBtn.addEventListener('click', () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
 });
 </script>
-
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{{-- 🔥 HTML CỦA NÚT MŨI TÊN ĐƯỢC ĐẶT CUỐI FILE --}}
+<button id="backToTopBtn" class="btn-back-to-top" title="Lên đầu trang">
+    <i class="fas fa-arrow-up"></i>
+</button>
 </x-app-layout>

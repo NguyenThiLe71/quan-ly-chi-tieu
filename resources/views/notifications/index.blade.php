@@ -1,6 +1,6 @@
 <x-app-layout>
 <div class="container py-4">
-    <h3 class="fw-bold text-center mb-4 title-gradient">
+    <h3 class="fw-bold text-center mb-4 title-gradient" style="font-family: 'Itim', cursive;">
         🔔 Thông báo
     </h3>
 
@@ -41,6 +41,11 @@
     @empty
         <p class="text-center text-muted">Không có thông báo</p>
     @endforelse
+
+    {{-- 🔥 CỤM PHÂN TRANG KUTE ĐÃ BỔ SUNG --}}
+    <div class="d-flex justify-content-center mt-4 style-pagination">
+        {{ $notifications->links() }}
+    </div>
 </div>
 
 {{-- Nút Back to Top - Để ngoài Container để fixed vị trí chuẩn --}}
@@ -154,6 +159,40 @@ backToTopBtn.addEventListener('click', () => {
 .btn-to-top:hover {
     transform: translateY(-5px) scale(1.1);
     filter: brightness(1.1);
+}
+
+/* 🔥 BỔ SUNG CSS: CUSTOM PHÂN TRANG CHO KUTE */
+.style-pagination .pagination {
+    gap: 6px;
+}
+.style-pagination .page-item .page-link {
+    border: 1px solid #fbcfe8 !important; /* Viền hồng nhạt */
+    color: #ec4899 !important; /* Số màu hồng */
+    border-radius: 12px !important; /* Bo góc mềm mại */
+    padding: 8px 14px;
+    background-color: #ffffff;
+    font-family: 'Itim', cursive;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+}
+.style-pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #ec4899 0%, #d946ef 100%) !important; /* Nền chuyển màu hồng tím */
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+}
+.style-pagination .page-item .page-link:hover {
+    transform: translateY(-2px);
+    background-color: #fff1f2;
+    box-shadow: 0 4px 8px rgba(236, 72, 153, 0.1);
+}
+/* Style cho các nút Disable (như nút mũi tên lúc ở trang 1) */
+.style-pagination .page-item.disabled .page-link {
+    border-color: #f1f5f9 !important;
+    color: #cbd5e1 !important;
+    background-color: #f8fafc;
 }
 </style>
 </x-app-layout>

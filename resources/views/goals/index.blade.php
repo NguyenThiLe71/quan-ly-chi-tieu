@@ -20,7 +20,7 @@
     </div>
 </div>
 
-    {{-- THÔNG BÁO SUCCESS/ERROR --}}
+    {{-- THÔNG BÁO SUCCESS/ERROR TRÊN ĐẦU TRANG --}}
     @if(session('success'))
         <div id="toast-success" class="alert alert-success shadow-sm border-0 text-center mb-4" style="border-radius: 15px;">
             {{ session('success') }}
@@ -68,20 +68,24 @@
             </form>
 
             {{-- HÀNG XỔ XUỐNG ĐỂ THÊM MỚI --}}
-            <div id="collapseGoalForm" style="{{ $errors->any() ? 'display:block;' : 'display:none;' }}">
+            <div id="collapseGoalForm" style="{{ $errors->has('deadline') || $errors->any() ? 'display:block;' : 'display:none;' }}">
                 <div class="pt-3 mt-3 border-top border-danger border-opacity-10">
-                    <form method="POST" action="{{ route('goals.store') }}" class="d-flex align-items-center gap-2 flex-nowrap">
+                    <form method="POST" action="{{ route('goals.store') }}" class="d-flex align-items-start gap-2 flex-nowrap row g-0 currency-form">
                         @csrf
-                        <div style="flex: 2; min-width: 150px;">
-                            <input name="name" class="form-control input-pink-style" placeholder="Tên mục tiêu..." aria-label="Nhập tên mục tiêu mới" required>
+                        <div class="col" style="flex: 2; min-width: 150px;">
+                            <input name="name" class="form-control input-pink-style" value="{{ old('name') }}" placeholder="Tên mục tiêu..." aria-label="Nhập tên mục tiêu mới" required>
                         </div>
-                        <div style="flex: 1.5; min-width: 120px;">
-                            <input name="target_amount" type="number" min="0" class="form-control input-pink-style fw-bold text-primary" placeholder="Số tiền mục tiêu" aria-label="Nhập số tiền mục tiêu">
+                        <div class="col" style="flex: 1.5; min-width: 120px;">
+                            {{-- 🛠 ĐÃ SỬA: Chuyển sang type="text" và thêm class money-input --}}
+                            <input name="target_amount" type="text" class="form-control input-pink-style fw-bold text-primary money-input" value="{{ old('target_amount') ? number_format(old('target_amount'), 0, ',', '.') : '' }}" placeholder="Số tiền mục tiêu" aria-label="Nhập số tiền mục tiêu">
                         </div>
-                        <div style="flex: 1.5; min-width: 150px;">
-                            <input type="date" name="deadline" aria-label="Chọn ngày hết hạn" class="form-control input-pink-style">
+                        <div class="col" style="flex: 1.5; min-width: 150px;">
+                            <input type="date" name="deadline" min="{{ date('Y-m-d') }}" value="{{ old('deadline') }}" aria-label="Chọn ngày hết hạn" class="form-control input-pink-style @error('deadline') is-invalid @enderror">
+                            @error('deadline')
+                                <div class="text-danger small fw-bold mt-1 px-1">Ngày hết hạn phải từ ngày hôm nay trở đi</div>
+                            @enderror
                         </div>
-                        <div style="flex: 0.8; min-width: 80px;">
+                        <div class="col-auto" style="flex: 0.8; min-width: 80px;">
                             <button class="btn btn-pink-blue fw-bold w-100" style="height: 45px; border-radius: 12px; white-space: nowrap;">
                                 Lưu
                             </button>
@@ -149,7 +153,6 @@
                             </div>
                         </div>
                         
-                        {{-- TỐI ƯU ACCESSIBILITY: Thay text-muted bằng text-secondary trầm hơn để tăng độ tương phản chữ --}}
                         <p class="extra-small mb-3 {{ $goal->status == 'expired' ? 'text-danger fw-bold' : 'text-secondary fw-semibold' }}">
                             📅 Hạn: {{ $goal->deadline ? \Carbon\Carbon::parse($goal->deadline)->format('d/m/Y') : '---' }}
                         </p>
@@ -168,9 +171,10 @@
 
                             <div class="mt-4 pt-3 border-top d-flex gap-2 align-items-center">
                                 {{-- Form Nạp/Rút tiền (Icon Ví) --}}
-                                <form method="POST" action="{{ route('goals.addMoney', $goal->id) }}" class="d-flex flex-grow-1 gap-2">
+                                <form method="POST" action="{{ route('goals.addMoney', $goal->id) }}" class="d-flex flex-grow-1 gap-2 currency-form">
                                     @csrf
-                                    <input name="amount" type="number" class="form-control form-control-sm polaroid-input" placeholder="+ / - tiền..." aria-label="Số tiền thay đổi">
+                                    {{-- 🛠 ĐÃ SỬA: Chuyển type="text", thêm class money-input, đổi placeholder --}}
+                                    <input name="amount" type="text" class="form-control form-control-sm polaroid-input money-input" placeholder="Nhập số tiền..." aria-label="Số tiền thay đổi">
                                     <button type="submit" title="Nạp/Rút tiền" class="btn-action wallet-modern">👛</button>
                                 </form>
 
@@ -191,7 +195,6 @@
     </div>
 
     <div class="custom-pagination-wrapper">
-        {{-- Trái --}}
         @if ($goals->onFirstPage())
             <div class="arrow-btn left disabled">‹</div>
         @else
@@ -200,7 +203,6 @@
                onclick="loadPage(event, this.href)">‹</a>
         @endif
 
-        {{-- Phải --}}
         @if ($goals->hasMorePages())
             <a href="{{ $goals->appends(request()->query())->nextPageUrl() }}" 
                class="arrow-btn right"
@@ -234,24 +236,28 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content custom-delete-modal" style="background: #fff;">
             <div class="modal-header border-0 pt-4 px-4">
-                <h5 class="fw-bold mb-0 text-dark">✏️ Chỉnh sửa mục tiêu</h5>
+                <h5 class="fw-bold mb-0" style="color:#ff69b4;">Chỉnh sửa mục tiêu</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('goals.update', $goal->id) }}" method="POST">
+            <form action="{{ route('goals.update', $goal->id) }}" method="POST" class="currency-form">
                 @csrf
                 @method('PUT')
                 <div class="modal-body p-4">
                     <div class="mb-3">
                         <label class="small fw-bold text-secondary mb-1">Tên mục tiêu</label>
-                        <input name="name" class="form-control input-pink-style" value="{{ $goal->name }}" required>
+                        <input name="name" class="form-control input-pink-style" value="{{ old('name', $goal->name) }}" required>
                     </div>
                     <div class="mb-3">
                         <label class="small fw-bold text-secondary mb-1">Số tiền đích (VNĐ)</label>
-                        <input name="target_amount" type="number" class="form-control input-pink-style fw-bold text-primary" value="{{ $goal->target_amount }}" required>
+                        {{-- 🛠 ĐÃ SỬA: Chuyển type="text", thêm class money-input và định dạng sẵn dữ liệu cũ --}}
+                        <input name="target_amount" type="text" class="form-control input-pink-style fw-bold text-primary money-input" value="{{ old('target_amount', number_format($goal->target_amount, 0, ',', '.')) }}" required>
                     </div>
                     <div class="mb-3">
                         <label class="small fw-bold text-secondary mb-1">Ngày hết hạn</label>
-                        <input type="date" name="deadline" class="form-control input-pink-style" value="{{ $goal->deadline ? \Carbon\Carbon::parse($goal->deadline)->format('Y-m-d') : '' }}">
+                        <input type="date" name="deadline" min="{{ date('Y-m-d') }}" class="form-control input-pink-style @error('deadline') is-invalid @enderror" value="{{ old('deadline', $goal->deadline ? \Carbon\Carbon::parse($goal->deadline)->format('Y-m-d') : '') }}">
+                        @error('deadline')
+                            <div class="text-danger small fw-bold mt-1 px-1">Ngày hết hạn phải từ ngày hôm nay trở đi</div>
+                        @enderror
                     </div>
                 </div>
                 <div class="modal-footer border-0 pb-4 px-4">
@@ -291,6 +297,7 @@
     }
     .input-pink-style { border-radius: 12px; border: 1px solid #f9a8d4 !important; height: 45px; padding-left: 15px; }
     .input-pink-style:focus { box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.1); border-color: #ec4899 !important; }
+    .input-pink-style.is-invalid { border-color: #dc3545 !important; }
     .btn-gradient { background: linear-gradient(45deg, #d946ef, #ec4899); color: white; border: none; transition: 0.3s; }
     .btn-gradient:hover { filter: brightness(1.1); transform: scale(1.05); color: white; }
 
@@ -435,7 +442,57 @@
 </style>
 
 <script>
+    // 🛠 THÊM MỚI: Hàm định dạng chuỗi phân cách hàng nghìn bằng dấu chấm
+    function formatCurrencyWithDot(value) {
+        // Loại bỏ toàn bộ ký tự không phải là số (ngoại trừ dấu trừ nếu có ở đầu ô Nạp/Rút)
+        let isNegative = value.startsWith('-');
+        let cleanValue = value.replace(/[^0-9]/g, '');
+        
+        if (!cleanValue) return isNegative ? '-' : '';
+        
+        // Thêm dấu chấm ngăn cách hàng nghìn
+        let formatted = cleanValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        return isNegative ? '-' + formatted : formatted;
+    }
+
+    // 🛠 THÊM MỚI: Hàm gán sự kiện định dạng cho các ô input tiền (Dùng được cho cả AJAX sau này)
+    function initMoneyInputs() {
+        document.querySelectorAll('.money-input').forEach(input => {
+            // Tránh gán sự kiện trùng lặp
+            if(input.dataset.listenerAttached) return; 
+
+            input.addEventListener('input', (e) => {
+                let cursorPosition = e.target.selectionStart;
+                let originalLength = e.target.value.length;
+                
+                // Định dạng lại giá trị trong ô
+                e.target.value = formatCurrencyWithDot(e.target.value);
+                
+                // Giữ vị trí con trỏ chuột không bị nhảy lung tung khi gõ số ở giữa
+                let newLength = e.target.value.length;
+                cursorPosition = cursorPosition + (newLength - originalLength);
+                e.target.setSelectionRange(cursorPosition, cursorPosition);
+            });
+
+            input.dataset.listenerAttached = "true";
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+        // Khởi tạo định dạng tiền tệ lần đầu tải trang
+        initMoneyInputs();
+
+        // 🛠 THÊM MỚI: Xử lý trước khi submit các Form để bỏ toàn bộ dấu chấm gửi lên Laravel
+        document.addEventListener('submit', (e) => {
+            if (e.target.classList.contains('currency-form')) {
+                e.target.querySelectorAll('.money-input').forEach(input => {
+                    // Loại bỏ tất cả dấu chấm, chỉ giữ lại số và dấu trừ (nếu nạp/rút số âm)
+                    let rawValue = input.value.replace(/\./g, '');
+                    input.value = rawValue;
+                });
+            }
+        });
+
         // Animation hiện các phần tử
         const items = document.querySelectorAll('.animate-item');
         items.forEach((item, index) => {
@@ -506,6 +563,9 @@
                 document.querySelector('.custom-pagination-wrapper').innerHTML = newNav;
 
                 container.style.opacity = "1";
+
+                // 🛠 THÊM MỚI: Khởi tạo lại sự kiện cho các ô gõ tiền sau khi DOM thay đổi từ AJAX
+                initMoneyInputs();
 
                 const items = document.querySelectorAll('.goal-item');
                 items.forEach((item, index) => {

@@ -202,148 +202,176 @@ class TransactionController extends Controller
     }
 
     // UPDATE
+    // UPDATE + ĐỒNG BỘ/BẬT/TẮT MỤC CỐ ĐỊNH
     public function update(Request $request, $id)
-    {
-        $transaction = Transaction::where('user_id', Auth::id())->findOrFail($id);
-        $amount = (float) str_replace('.', '', $request->amount);
-
-        $oldDescription = $transaction->description;
-        $oldAmount = (float) $transaction->amount;
-        $oldCategoryId = $transaction->category_id; 
-
-        $transaction->update([
-            'amount' => $amount,
-            'category_id' => $request->category_id,
-            'transaction_date' => $request->transaction_date,
-            'type' => $request->type,
-            'description' => $request->description,
-        ]);
-
-        // --- BẮT ĐẦU ĐỒNG BỘ SANG BẢNG CỐ ĐỊNH (RECURRING) ---
-        $recurring = RecurringTransaction::where('user_id', Auth::id())
-            ->where('category_id', $oldCategoryId) 
-            ->first();
-
-        if ($recurring) {
-            $newDayOfMonth = Carbon::parse($request->transaction_date)->day;
-            $newCategory = Category::find($request->category_id);
-
-            $recurring->update([
-                'name' => $newCategory?->name ?? $recurring->name,
-                'amount' => $amount,
-                'type' => $request->type,
-                'category_id' => $request->category_id,
-                'day_of_month' => $newDayOfMonth,
-            ]);
-        }
-        // --- KẾT THÚC ĐỒNG BỘ ---
-
-        $note = '';
-        $desc = $request->description ?? $oldDescription ?? 'Không có mô tả';
-        $categoryName = Category::find($request->category_id)?->name ?? 'Danh mục';
-
-        if ($oldDescription != $request->description) {
-            $note = '📝 Sửa mô tả giao dịch "' . $categoryName . '" từ "' . $oldDescription . '" thành "' . $request->description . '"';
-        } elseif ($oldAmount != $amount) {
-            $note = '💰 Sửa giá giao dịch "' . $categoryName . '" | ' . $desc . ' | từ "' . number_format($oldAmount) . ' VNĐ" thành "' . number_format($amount) . ' VNĐ"';
-        } else {
-            $note = '🔄 Cập nhật giao dịch "' . $categoryName . '"';
-        }
-
-        InteractionHelper::log(Auth::id(), 'transactions', 'updated', null, $note);
-
-        // LOGIC THÔNG BÁO CẬP NHẬT GIAO DỊCH
-        $msg = "";
-        if ($oldDescription != $request->description) {
-            $msg = "Bạn vừa sửa mô tả mục $categoryName thành: \"" . $request->description . "\"";
-        } elseif ($oldAmount != $amount) {
-            $msg = "Bạn vừa sửa số tiền mục $categoryName thành " . number_format($amount) . " VNĐ";
-        } else {
-            $msg = "Bạn đã cập nhật thông tin giao dịch mục $categoryName";
-        }
-
-        Notification::create([
-            'user_id' => Auth::id(),
-            'title' => '🔄 Đã cập nhật giao dịch',
-            'message' => $msg,
-        ]);
-
-        // 🔥 FIX LỖI: Check ngân sách sau khi UPDATE (Bao gồm cả mốc 80%)
-        if ($request->type == 'expense') {
-            $month = Carbon::parse($request->transaction_date)->month;
-            $year = Carbon::parse($request->transaction_date)->year;
-
-            $budget = Budget::where('user_id', Auth::id())
-                ->where('category_id', $request->category_id)
-                ->where('month', $month)
-                ->where('year', $year)
-                ->first();
-
-            if ($budget) {
-                $totalSpent = Transaction::where('user_id', Auth::id())
-                    ->where('category_id', $request->category_id)
-                    ->where('type', 'expense')
-                    ->whereMonth('transaction_date', $month)
-                    ->whereYear('transaction_date', $year)
-                    ->sum('amount');
-
-                if ($totalSpent > $budget->amount_limit) {
-                    Notification::create([
-                        'user_id' => Auth::id(),
-                        'title' => '🚨 Vượt ngân sách ' . $categoryName,
-                        'message' => "Sau khi sửa, mục $categoryName đã chi " . number_format($totalSpent) . " VNĐ (Vượt hạn mức " . number_format($budget->amount_limit) . " VNĐ)",
-                    ]);
-                } elseif ($totalSpent >= ($budget->amount_limit * 0.8)) {
-                    Notification::create([
-                        'user_id' => Auth::id(),
-                        'title' => '⚠️ Sắp hết ngân sách ' . $categoryName,
-                        'message' => "Sau khi sửa, mục $categoryName đã chi " . number_format($totalSpent) . " VNĐ (Đạt " . round(($totalSpent / $budget->amount_limit) * 100, 1) . "% hạn mức)",
-                    ]);
-                }
-            }
-        }
-
-        return back()->with('success', 'Cập nhật thành công!');
-    }
-
-    // DELETE
-    public function destroy($id)
     {
         try {
             $transaction = Transaction::where('user_id', Auth::id())->findOrFail($id);
-            $amount = $transaction->amount;
-            $description = $transaction->description ?? 'Giao dịch không có mô tả';
-            $categoryName = $transaction->category?->name ?? 'Danh mục';
+            $amount = (float) str_replace('.', '', $request->amount);
 
-            TransactionLog::create([
-                'user_id'     => Auth::id(),
-                'action'      => 'deleted',
-                'old_amount'  => $amount,
-                'new_amount'  => null,
-                'description' => $description, 
-                'changed_at'  => now(),
+            $oldDescription = $transaction->description;
+            $oldAmount = (float) $transaction->amount;
+            $oldCategoryId = $transaction->category_id; 
+
+            // 1. Cập nhật thông tin giao dịch chính trước
+            $transaction->update([
+                'amount' => $amount,
+                'category_id' => $request->category_id,
+                'transaction_date' => $request->transaction_date,
+                'type' => $request->type,
+                'description' => $request->description,
             ]);
 
-            InteractionHelper::log(
-                Auth::id(),
-                'transactions',
-                'deleted',
-                null,
-                '🗑️ Xóa giao dịch "' . $categoryName . '" | ' . number_format($amount) . ' VNĐ'
-            );
+            // Lấy tên danh mục mới sau khi update để làm dữ liệu lưu
+            $categoryName = Category::find($request->category_id)?->name ?? 'Danh mục';
+
+            // 2. 🔥 XỬ LÝ ĐỒNG BỘ & BẬT/TẮT NÚT GẠT CỐ ĐỊNH KHI SỬA
+            if ($request->filled('is_recurring') && $request->is_recurring == 1) {
+                // Trường hợp người dùng TÍCH CHỌN hoặc GIỮ NGUYÊN cố định: Dùng updateOrCreate để xử lý
+                $newDayOfMonth = Carbon::parse($request->transaction_date)->day;
+
+                // Xóa cấu hình cũ của danh mục cũ (nếu người dùng đổi cả danh mục lẫn giữ cố định)
+                if ($oldCategoryId != $request->category_id) {
+                    RecurringTransaction::where('user_id', Auth::id())
+                        ->where('category_id', $oldCategoryId)
+                        ->delete();
+                }
+
+                // Cập nhật hoặc tạo mới cấu hình cho danh mục hiện tại
+                RecurringTransaction::updateOrCreate(
+                    [
+                        'user_id'     => Auth::id(),
+                        'category_id' => $request->category_id,
+                    ],
+                    [
+                        'name'         => $request->description ?: ($categoryName . ' cố định'),
+                        'amount'       => $amount,
+                        'type'         => $request->type,
+                        'day_of_month' => $newDayOfMonth,
+                        'is_active'    => true,
+                    ]
+                );
+            } else {
+                // Trường hợp người dùng KHÔNG TÍCH (Bỏ chọn): Xóa sạch cấu hình cố định cũ và mới của mục này
+                RecurringTransaction::where('user_id', Auth::id())
+                    ->whereIn('category_id', [$oldCategoryId, $request->category_id])
+                    ->delete();
+            }
+
+            // --- HỆ THỐNG LOGS VÀ THÔNG BÁO (GIỮ NGUYÊN HOÀN TOÀN CỦA ÔNG) ---
+            $note = '';
+            $desc = $request->description ?? $oldDescription ?? 'Không có mô tả';
+
+            if ($oldDescription != $request->description) {
+                $note = '📝 Sửa mô tả giao dịch "' . $categoryName . '" từ "' . $oldDescription . '" thành "' . $request->description . '"';
+            } elseif ($oldAmount != $amount) {
+                $note = '💰 Sửa giá giao dịch "' . $categoryName . '" | ' . $desc . ' | từ "' . number_format($oldAmount) . ' VNĐ" thành "' . number_format($amount) . ' VNĐ"';
+            } else {
+                $note = '🔄 Cập nhật giao dịch "' . $categoryName . '"';
+            }
+
+            InteractionHelper::log(Auth::id(), 'transactions', 'updated', null, $note);
+
+            $msg = "";
+            if ($oldDescription != $request->description) {
+                $msg = "Bạn vừa sửa mô tả mục $categoryName thành: \"" . $request->description . "\"";
+            } elseif ($oldAmount != $amount) {
+                $msg = "Bạn vừa sửa số tiền mục $categoryName thành " . number_format($amount) . " VNĐ";
+            } else {
+                $msg = "Bạn đã cập nhật thông tin giao dịch mục $categoryName";
+            }
 
             Notification::create([
                 'user_id' => Auth::id(),
-                'title'   => 'Đã xóa giao dịch',
-                'message' => 'Bạn đã xóa khoản chi ' . number_format($amount) . ' VNĐ (' . $description . ')',
+                'title' => '🔄 Đã cập nhật giao dịch',
+                'message' => $msg,
             ]);
 
-            $transaction->delete();
+            // LOGIC CHECK NGÂN SÁCH CỦA ÔNG
+            if ($request->type == 'expense') {
+                $month = Carbon::parse($request->transaction_date)->month;
+                $year = Carbon::parse($request->transaction_date)->year;
 
-            return redirect()->route('transactions.index')->with('success', 'Xóa giao dịch thành công');
+                $budget = Budget::where('user_id', Auth::id())
+                    ->where('category_id', $request->category_id)
+                    ->where('month', $month)
+                    ->where('year', $year)
+                    ->first();
+
+                if ($budget) {
+                    $totalSpent = Transaction::where('user_id', Auth::id())
+                        ->where('category_id', $request->category_id)
+                        ->where('type', 'expense')
+                        ->whereMonth('transaction_date', $month)
+                        ->whereYear('transaction_date', $year)
+                        ->sum('amount');
+
+                    if ($totalSpent > $budget->amount_limit) {
+                        Notification::create([
+                            'user_id' => Auth::id(),
+                            'title' => '🚨 Vượt ngân sách ' . $categoryName,
+                            'message' => "Sau khi sửa, mục $categoryName đã chi " . number_format($totalSpent) . " VNĐ (Vượt hạn mức " . number_format($budget->amount_limit) . " VNĐ)",
+                        ]);
+                    } elseif ($totalSpent >= ($budget->amount_limit * 0.8)) {
+                        Notification::create([
+                            'user_id' => Auth::id(),
+                            'title' => '⚠️ Sắp hết ngân sách ' . $categoryName,
+                            'message' => "Sau khi sửa, mục $categoryName đã chi " . number_format($totalSpent) . " VNĐ (Đạt " . round(($totalSpent / $budget->amount_limit) * 100, 1) . "% hạn mức)",
+                        ]);
+                    }
+                }
+            }
+
+            return back()->with('success', 'Cập nhật thành công! ✨');
 
         } catch (\Exception $e) {
-            return redirect()->route('transactions.index')->with('error', 'Xóa thất bại');
+            return back()->with('error', 'Cập nhật thất bại: ' . $e->getMessage());
         }
     }
+
+    // DELETE
+   public function destroy($id)
+{
+    try {
+        $transaction = Transaction::where('user_id', Auth::id())->findOrFail($id);
+        $amount = $transaction->amount;
+        $description = $transaction->description ?? 'Giao dịch không có mô tả';
+        $categoryName = $transaction->category?->name ?? 'Danh mục';
+
+        TransactionLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'deleted',
+            'old_amount'  => $amount,
+            'new_amount'  => null,
+            'description' => $description, 
+            'changed_at'  => now(),
+        ]);
+
+        InteractionHelper::log(
+            Auth::id(),
+            'transactions',
+            'deleted',
+            null,
+            '🗑️ Xóa giao dịch "' . $categoryName . '" | ' . number_format($amount) . ' VNĐ'
+        );
+
+        Notification::create([
+            'user_id' => Auth::id(),
+            'title'   => 'Đã xóa giao dịch',
+            'message' => 'Bạn đã xóa khoản chi ' . number_format($amount) . ' VNĐ (' . $description . ')',
+        ]);
+
+       \App\Models\RecurringTransaction::where('user_id', Auth::id())
+            ->where('category_id', $transaction->category_id)
+            ->delete();
+
+        // Xóa giao dịch chính
+        $transaction->delete();
+
+        return redirect()->route('transactions.index')->with('success', 'Xóa giao dịch thành công');
+
+    } catch (\Exception $e) {
+        return redirect()->route('transactions.index')->with('error', 'Xóa thất bại');
+    }
+}
 }

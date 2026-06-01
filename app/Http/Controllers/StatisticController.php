@@ -66,6 +66,7 @@ class StatisticController extends Controller
         }
 
         // 🔥 THÊM PHẦN SAVING (Đã bọc kiểm tra dữ liệu an toàn)
+       // 🔥 THÊM PHẦN SAVING (Đã bọc kiểm tra dữ liệu an toàn)
         $saving = SavingGoal::where('user_id', $user_id)
             ->where('status', 'active')
             ->select(
@@ -78,12 +79,24 @@ class StatisticController extends Controller
         $savedAmount = $saving ? (float) $saving->saved : 0.0;
         $targetAmount = $saving ? (float) $saving->target : 0.0;
 
+        // 🎯 BỔ SUNG THÊM LOGIC CHO CHI TIẾT TIẾN ĐỘ TIẾT KIỆM
+        // 1. Tính số tiền còn thiếu
+        $remainingAmount = $targetAmount > $savedAmount ? ($targetAmount - $savedAmount) : 0.0;
+
+        // 2. Tính phần trăm hoàn thành (đảm bảo không bị chia cho 0)
+        $percentage = 0;
+        if ($targetAmount > 0) {
+            $percentage = round(($savedAmount / $targetAmount) * 100);
+        }
+
         // 🔥 RETURN JSON SẠCH - PHẢN HỒI SIÊU TỐC
         return response()->json([
             'chartData' => $data,
             'saving' => [
                 'saved' => $savedAmount,
                 'target' => $targetAmount,
+                'remaining' => $remainingAmount, // Trả thêm số tiền còn thiếu
+                'percentage' => $percentage     // Trả thêm phần trăm chuẩn
             ]
         ]);
     }

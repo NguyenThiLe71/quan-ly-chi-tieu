@@ -11,11 +11,13 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SavingGoalController;
 use App\Http\Controllers\InsightController;
 use App\Http\Controllers\Admin\AdminDashboardController;
-use App\Http\Controllers\admin\AdminLogController;
-use App\Http\Controllers\admin\AdminSpamController;
-use App\Http\Controllers\admin\UserController;
-use App\Http\Controllers\admin\CategoryController as AdminCategoryController;
-use App\Http\Controllers\admin\AdminNotificationController;
+use App\Http\Controllers\Admin\AdminLogController;
+use App\Http\Controllers\Admin\AdminSpamController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
+use App\Http\Controllers\Admin\AdminNotificationController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\PaymentController; // Thêm dòng này vào
 /*
 |--------------------------------------------------------------------------
 | 1. Trang gốc (Public/Redirect)
@@ -83,13 +85,21 @@ Route::middleware('auth')->group(function () {
 
 });
 
-    Route::middleware('auth')->group(function () {
+Route::middleware('auth')->group(function () {
     Route::get('/insights', [InsightController::class, 'index'])->name('insights.index');
-Route::post('/insights/analyze', [InsightController::class, 'analyze']);
-Route::post('/insights/chat-proxy', [InsightController::class, 'chatProxy']);
+    Route::post('/insights/analyze', [InsightController::class, 'analyze']);
+    
+    // --- THÊM DÒNG NÀY VÀO ---
+    // Sửa từ post thành get
+Route::get('/insights/compare', [InsightController::class, 'compare']);
+    // -------------------------
+    
+    Route::post('/insights/chat-proxy', [InsightController::class, 'chatProxy']);
+    
+    Route::get('/reports/download', [ReportController::class, 'downloadPDF'])->name('reports.download');
 });
     
-
+Route::get('/checkout', [PaymentController::class, 'checkout'])->name('payment.checkout');
     // Hồ sơ (Profile)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -139,4 +149,6 @@ Route::delete('/categories-manager/{id}', [AdminCategoryController::class, 'dest
 | 4. Auth Routes mặc định
 |--------------------------------------------------------------------------
 */
+
 require __DIR__.'/auth.php';
+Route::post('/webhook/payos', [\App\Http\Controllers\WebhookController::class, 'handle']);

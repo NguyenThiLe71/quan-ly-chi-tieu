@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 class NotificationController extends Controller
 {
     /**
-     * Danh sách thông báo
+     * Danh sách thông báo (Đã sửa tích hợp phân trang)
      */
     public function index(Request $request)
     {
@@ -24,9 +24,9 @@ class NotificationController extends Controller
             }
         }
 
-        // Sắp xếp thông báo mới nhất lên đầu
-       
-$notifications = $query->orderBy('id', 'desc')->get();
+        // Sắp xếp thông báo mới nhất lên đầu và áp dụng phân trang (10 mục/trang)
+        // Thay vì ->get(), ta đổi thành ->paginate(10) và giữ lại các tham số lọc trên URL (nếu có)
+        $notifications = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
 
         return view('notifications.index', compact('notifications'));
     }
@@ -36,7 +36,6 @@ $notifications = $query->orderBy('id', 'desc')->get();
      */
     public function markAsRead($id)
     {
-        // Sử dụng findOrFail để tự động trả về lỗi 404 nếu không tìm thấy hoặc không thuộc quyền sở hữu
         $noti = Notification::where('user_id', Auth::id())->findOrFail($id);
         $noti->update(['is_read' => 1]);
 
@@ -49,7 +48,7 @@ $notifications = $query->orderBy('id', 'desc')->get();
     public function markAllRead()
     {
         Notification::where('user_id', Auth::id())
-            ->where('is_read', 0) // Chỉ cập nhật những cái chưa đọc để tối ưu hiệu suất
+            ->where('is_read', 0)
             ->update(['is_read' => 1]);
 
         return back()->with('success', 'Đã đánh dấu tất cả là đã đọc.');

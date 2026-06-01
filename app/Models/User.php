@@ -19,6 +19,9 @@ class User extends Authenticatable
         'balance',
         'role',
         'status',
+        'is_premium',
+        'daily_chat_count', // Thêm dòng này
+        'last_chat_date',   // Thêm dòng này
     ];
 
     protected $hidden = [

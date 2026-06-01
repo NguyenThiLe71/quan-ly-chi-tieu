@@ -61,11 +61,15 @@ class SavingGoalController extends Controller
     // 🆕 CREATE
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|max:150',
-            'target_amount' => 'required|numeric|min:1',
-            'deadline' => 'nullable|date',
-        ]);
+        // 🛠️ ĐÃ CẬP NHẬT: Thêm after_or_equal:today để chặn ngày quá khứ
+       $request->validate([
+    'name' => 'required|max:150',
+    'target_amount' => 'required|numeric|min:1',
+    'deadline' => 'nullable|date|after_or_equal:today',
+], [
+    // 🔥 Đã sửa đúng theo đặc tả 1.0.3
+    'deadline.after_or_equal' => 'Ngày hết hạn phải từ ngày hôm nay trở đi.' 
+]);
 
         $goal = SavingGoal::create([
             'user_id' => Auth::id(),
@@ -221,11 +225,15 @@ class SavingGoalController extends Controller
     // ✏️ UPDATE GOAL
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'name' => 'required|max:150',
-            'target_amount' => 'required|numeric|min:1',
-            'deadline' => 'nullable|date',
-        ]);
+        // 🛠️ ĐÃ CẬP NHẬT: Thêm after_or_equal:today để chặn ngày quá khứ khi cập nhật
+       $request->validate([
+    'name' => 'required|max:150',
+    'target_amount' => 'required|numeric|min:1',
+    'deadline' => 'nullable|date|after_or_equal:today',
+], [
+    // 🔥 Đã sửa đúng theo đặc tả 1.0.3
+    'deadline.after_or_equal' => 'Ngày hết hạn phải từ ngày hôm nay trở đi.' 
+]);
 
         $goal = SavingGoal::where('user_id', Auth::id())
             ->findOrFail($id);
@@ -238,44 +246,45 @@ class SavingGoalController extends Controller
             : null;
 
         // update info
-      $goal->name = $request->name;
-$goal->target_amount = $request->target_amount;
-$goal->deadline = $request->deadline;
+        $goal->name = $request->name;
+        $goal->target_amount = $request->target_amount;
+        $goal->deadline = $request->deadline;
 
-// 🔥 lưu status cũ
-$oldStatus = $goal->status;
+        // 🔥 lưu status cũ
+        $oldStatus = $goal->status;
 
-// 🔥 UPDATE STATUS SAU KHI SỬA TARGET
-if ($goal->current_amount >= $goal->target_amount) {
+        // 🔥 UPDATE STATUS SAU KHI SỬA TARGET
+        if ($goal->current_amount >= $goal->target_amount) {
 
-    $goal->status = 'completed';
+            $goal->status = 'completed';
 
-    // 🎉 chỉ thông báo khi mới hoàn thành
-    if ($oldStatus !== 'completed') {
+            // 🎉 chỉ thông báo khi mới hoàn thành
+            if ($oldStatus !== 'completed') {
 
-        Notification::create([
-            'user_id' => Auth::id(),
-            'title' => '🎉 Hoàn thành mục tiêu!',
-            'message' => 'Bạn đã đạt mục tiêu "' . $goal->name . '"',
-        ]);
-    }
-}
-else {
+                Notification::create([
+                    'user_id' => Auth::id(),
+                    'title' => '🎉 Hoàn thành mục tiêu!',
+                    'message' => 'Bạn đã đạt mục tiêu "' . $goal->name . '"',
+                ]);
+            }
+        }
+        else {
 
-    if (
-        $goal->deadline &&
-        now()->gt($goal->deadline)
-    ) {
+            if (
+                $goal->deadline &&
+                now()->gt($goal->deadline)
+            ) {
 
-        $goal->status = 'expired';
-    }
-    else {
+                $goal->status = 'expired';
+            }
+            else {
 
-        $goal->status = 'active';
-    }
-}
+                $goal->status = 'active';
+            }
+        }
 
-$goal->save();
+        $goal->save();
+        
         // 📝 LOG
         $logMessages = [];
 
