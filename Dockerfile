@@ -8,9 +8,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# Cài thư viện Python từ requirements.txt
+
+# Cài đặt thư viện Python sạch sẽ, ép buộc cài lại từ đầu
 COPY ai_service/requirements.txt /tmp/requirements.txt
-RUN pip3 install -r /tmp/requirements.txt --break-system-packages
+RUN pip3 install --no-cache-dir --upgrade -r /tmp/requirements.txt --break-system-packages
 
 RUN a2enmod rewrite
 

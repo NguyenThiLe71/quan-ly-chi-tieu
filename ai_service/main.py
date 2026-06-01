@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
-import google.generativeai as genai
+from google import genai
 from google.genai import types
 
 # Tải .env một lần duy nhất
