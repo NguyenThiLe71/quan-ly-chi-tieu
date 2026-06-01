@@ -4,4 +4,4 @@ numpy
 scikit-learn
 requests
 python-dotenv
-google-genai
+google-generativeai
