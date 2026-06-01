@@ -38,7 +38,6 @@ RUN php /var/www/html/artisan view:clear
 
 # 9. Lệnh khởi chạy
 # Lưu ý: Nếu web vẫn lỗi 500, hãy đảm bảo lệnh chạy apache là nền tảng chính
-# Sửa dòng CMD cuối cùng thành:
 CMD cd ai-service && uvicorn main:app --host 0.0.0.0 --port 8000 & apache2-foreground
 
 EXPOSE 80
