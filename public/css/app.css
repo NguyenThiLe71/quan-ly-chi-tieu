@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Xóa gạch chân mặc định của trình duyệt */
+a {
+    text-decoration: none !important;
+}
+
+/* Đảm bảo toàn bộ chữ trong trang dùng font Itim */
+body, h1, h2, h3, a, span, button {
+    font-family: 'Itim', cursive !important;
+}
+
+/* Giữ nguyên các class hồng cam ông đã viết */
+@layer components {
+    .btn-primary {
+        @apply bg-pink-500 hover:bg-orange-400 text-white font-semibold px-4 py-2 rounded-lg;
+    }
+    .bg-primary {
+        @apply bg-gradient-to-r from-pink-400 to-orange-400;
+    }
+}
