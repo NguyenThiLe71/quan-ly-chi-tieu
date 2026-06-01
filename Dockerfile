@@ -8,7 +8,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-RUN pip3 install --no-cache-dir fastapi uvicorn numpy scikit-learn requests --break-system-packages
+RUN pip3 install --no-cache-dir fastapi uvicorn numpy scikit-learn requests python-dotenv --break-system-packages
 
 RUN a2enmod rewrite
 
