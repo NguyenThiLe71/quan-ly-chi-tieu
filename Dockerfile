@@ -24,10 +24,13 @@ RUN composer install --no-dev --optimize-autoloader
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
 # Cấp quyền và cache Laravel
+# Sửa đoạn này trong Dockerfile
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
     chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache && \
     cd /var/www/html && \
-    rm -f bootstrap/cache/config.php bootstrap/cache/services.php bootstrap/cache/packages.php && \
+    php artisan config:clear && \
+    php artisan cache:clear && \
+    php artisan view:clear && \
     php artisan config:cache && \
     php artisan route:cache && \
     php artisan view:cache
