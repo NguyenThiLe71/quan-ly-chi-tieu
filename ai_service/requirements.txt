@@ -3,5 +3,5 @@ uvicorn
 numpy
 scikit-learn
 requests
-google-genai
 python-dotenv
+google-genai
