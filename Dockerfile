@@ -6,31 +6,38 @@ RUN apt-get update && apt-get install -y \
     libpng-dev libonig-dev libxml2-dev zip unzip git curl \
     python3 python3-pip python3-venv
 
-# BỔ SUNG: Cài đặt Composer
+# Cài đặt Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 2. Cài đặt PHP extensions cho Laravel
+# 2. Cài đặt PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# 3. Cài đặt các thư viện Python cho AI
+# 3. Cài đặt Python AI
 RUN pip3 install --no-cache-dir fastapi uvicorn numpy scikit-learn requests --break-system-packages
 
-# 4. Bật mod_rewrite cho Apache
+# 4. Bật mod_rewrite
 RUN a2enmod rewrite
 
-# 5. Copy toàn bộ mã nguồn vào Container
+# 5. Copy mã nguồn
 COPY . /var/www/html
 
-# BỔ SUNG: Chạy lệnh cài đặt thư viện PHP
+# 6. Cài đặt thư viện PHP
 RUN composer install --no-dev --optimize-autoloader
 
-# 6. Cấu hình Apache trỏ vào thư mục public của Laravel
+# 7. Cấu hình Apache trỏ vào public
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
-# 7. Cấp quyền cho Laravel
+# 8. Cấp quyền và cấu hình Laravel
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# 8. Lệnh khởi chạy song song cả 2 Service
+# BỔ SUNG: Dọn dẹp cache để tránh lỗi đường dẫn cũ từ máy tính cá nhân
+RUN php /var/www/html/artisan config:clear
+RUN php /var/www/html/artisan cache:clear
+RUN php /var/www/html/artisan view:clear
+
+# 9. Lệnh khởi chạy
+# Lưu ý: Nếu web vẫn lỗi 500, hãy đảm bảo lệnh chạy apache là nền tảng chính
 CMD uvicorn ai-service.main:app --host 0.0.0.0 --port 8000 & apache2-foreground
 
 EXPOSE 80
