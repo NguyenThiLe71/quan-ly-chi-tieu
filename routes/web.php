@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\PaymentController; // Thêm dòng này vào
+
 /*
 |--------------------------------------------------------------------------
 | 1. Trang gốc (Public/Redirect)
@@ -152,3 +153,10 @@ Route::delete('/categories-manager/{id}', [AdminCategoryController::class, 'dest
 
 require __DIR__.'/auth.php';
 Route::post('/webhook/payos', [\App\Http\Controllers\WebhookController::class, 'handle']);
+Route::get('/clear-everything', function () {
+    \Illuminate\Support\Facades\Artisan::call('view:clear');
+    \Illuminate\Support\Facades\Artisan::call('cache:clear');
+    \Illuminate\Support\Facades\Artisan::call('config:clear');
+    
+    return "Đã xóa sạch cache!";
+});
