@@ -19,10 +19,14 @@ RUN composer install --no-dev --optimize-autoloader
 
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
-# Chỉ cấp quyền
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Cấp quyền và chạy cache cấu hình để nhận thiết lập mới nhất
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
+    cd /var/www/html && \
+    php artisan config:cache && \
+    php artisan route:cache && \
+    php artisan view:cache
 
-# SỬA DÒNG NÀY: Dùng bash để đảm bảo tiến trình chạy nền ổn định hơn
+# CMD chạy service
 CMD bash -c "uvicorn ai-service.main:app --host 0.0.0.0 --port 8000 & apache2-foreground"
 
 EXPOSE 80

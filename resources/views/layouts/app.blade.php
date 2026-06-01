@@ -22,7 +22,7 @@
         <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
         <!-- 4. Vite (Chứa Tailwind và CSS Luxury của ông) -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <script src="https://cdn.tailwindcss.com"></script>
 
         <style>
             .force-peach-bg {
