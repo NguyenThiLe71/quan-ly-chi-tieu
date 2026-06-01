@@ -30,6 +30,6 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
     php artisan view:cache
 
 # CMD chạy service
-CMD bash -c "uvicorn ai-service.main:app --host 0.0.0.0 --port 8000 & apache2-foreground"
+CMD bash -c "uvicorn ai_service.main:app --host 0.0.0.0 --port 8000 & apache2-foreground"
 
 EXPOSE 80
