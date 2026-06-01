@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.bunny.net">
 <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-<!-- Xóa dòng @vite và thay bằng link này -->
+
 <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 
 <style>

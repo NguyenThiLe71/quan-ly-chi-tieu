@@ -19,10 +19,13 @@ RUN composer install --no-dev --optimize-autoloader
 
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
-# Chỉ cấp quyền, không chạy artisan ở đây để tránh lỗi build
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# CẤP QUYỀN VÀ DỌN CACHE NGAY LÚC BUILD
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
+    && php /var/www/html/artisan view:clear \
+    && php /var/www/html/artisan cache:clear \
+    && php /var/www/html/artisan config:clear
 
-# Chạy cả 2 dịch vụ
-CMD uvicorn ai-service.main:app --host 0.0.0.0 --port 8000 & apache2-foreground
+# Lệnh khởi chạy song song (sử dụng bash để đảm bảo ổn định)
+CMD bash -c "uvicorn ai-service.main:app --host 0.0.0.0 --port 8000 & apache2-foreground"
 
 EXPOSE 80
